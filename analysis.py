@@ -1612,7 +1612,7 @@ v["val_text"] = (
 # ---------------------------------------------------------------- Reproducibility
 v["method_text"] = (
     "Source: Yahoo Finance, downloaded with the \\texttt{yfinance} library and updated automatically (GitHub "
-    "repository \\url{https://github.com/cedricmasset98/donnees-marche}). VT: daily closing prices and prices "
+    "repository \\url{https://github.com/cedricmasset98/vt}). VT: daily closing prices and prices "
     "adjusted for dividends and splits (``Adj Close''). Risk-free rate: 13-week US T-bill (\\texttt{\\^{}IRX}). "
     "Currency: USD/CHF (\\texttt{CHF=X}). Annualised returns use calendar time; annualised volatility, Sharpe and "
     "Sortino ratios use monthly returns; Sharpe confidence intervals follow \\citet{mertens2002} and "
