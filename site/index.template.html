@@ -36,6 +36,9 @@
   .eyebrow { font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
   h1 { font-size: clamp(24px, 4.5vw, 34px); line-height: 1.15; margin: 0 0 6px; font-weight: 650; letter-spacing: -0.01em; }
   .lede { color: var(--ink-2); margin: 0; max-width: 70ch; }
+  .principle { margin: 14px 0 0; padding: 10px 14px; max-width: 70ch; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
+  .principle p { margin: 0; color: var(--ink); }
+  .principle cite { display: block; margin-top: 6px; font-size: 12.5px; font-style: normal; color: var(--muted); }
   .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
   .price { font-size: clamp(30px, 6vw, 42px); font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
   .chg { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -126,6 +129,10 @@
     <p class="eyebrow">Market dashboard · updated every weekday</p>
     <h1>Vanguard Total World Stock ETF (VT)</h1>
     <p class="lede">One fund holding thousands of stocks across developed and emerging markets. Choose a period and a currency: every figure, chart and tool below is recalculated for that selection.</p>
+    <blockquote class="principle">
+      <p>An index investor who tracks the market and pays lower fees than the asset-weighted average of all investors necessarily earns a higher net return than their asset-weighted average net return.</p>
+      <cite>After Sharpe (1991), “The Arithmetic of Active Management”</cite>
+    </blockquote>
     <div class="price-row">
       <span class="price" id="price">{{PRICE}}</span>
       <span class="chg" id="chg"></span>
