@@ -38,6 +38,7 @@
   .lede { color: var(--ink-2); margin: 0; max-width: 70ch; }
   .principle { margin: 14px 0 0; padding: 10px 14px; max-width: 70ch; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0; }
   .principle p { margin: 0; color: var(--ink); }
+  .principle math { margin: 10px 0 2px; font-size: 1.15em; color: var(--ink); }
   .principle cite { display: block; margin-top: 6px; font-size: 12.5px; font-style: normal; color: var(--muted); }
   .price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
   .price { font-size: clamp(30px, 6vw, 42px); font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
@@ -131,6 +132,7 @@
     <p class="lede">One fund holding thousands of stocks across developed and emerging markets. Choose a period and a currency: every figure, chart and tool below is recalculated for that selection.</p>
     <blockquote class="principle">
       <p>An index investor who tracks the market and pays lower fees than the asset-weighted average of all investors necessarily earns a higher net return than their asset-weighted average net return.</p>
+      <math display="block" aria-label="c sub I less than c bar implies R sub I net greater than R bar net"><msub><mi>c</mi><mi>I</mi></msub><mo>&lt;</mo><mover accent="true"><mi>c</mi><mo>&#xAF;</mo></mover><mspace width="1em"></mspace><mo>&#x27F9;</mo><mspace width="1em"></mspace><msubsup><mi>R</mi><mi>I</mi><mtext>net</mtext></msubsup><mo>&gt;</mo><msup><mover accent="true"><mi>R</mi><mo>&#xAF;</mo></mover><mpadded lspace="0.12em"><mtext>net</mtext></mpadded></msup></math>
       <cite>After Sharpe (1991), “The Arithmetic of Active Management”</cite>
     </blockquote>
     <div class="price-row">
