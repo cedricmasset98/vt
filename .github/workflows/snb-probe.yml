@@ -1,0 +1,26 @@
+name: SNB probe (temporaire)
+on:
+  push:
+    branches: [snb-probe]
+    paths: [.github/workflows/snb-probe.yml]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Telecharger les cubes BNS
+        run: |
+          mkdir -p probe
+          for c in snbgwdzid zimoma; do
+            curl -sS -f -m 60 -o probe/$c-dimensions.json "https://data.snb.ch/api/cube/$c/dimensions/en" || echo "dims $c failed"
+            curl -sS -f -m 120 -o probe/$c.csv "https://data.snb.ch/api/cube/$c/data/csv/en" || echo "data $c failed"
+          done
+          ls -la probe; head -c 600 probe/snbgwdzid.csv || true
+      - name: Enregistrer
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add probe/
+          git commit -m "SNB probe data" && git push
