@@ -682,6 +682,22 @@ Sharpe ratio, 95\% confidence interval & \VAR{sharpe_usd_ci} & \VAR{sharpe_chf_c
 \end{table}
 \VAR{chf_text}
 
+\begin{table}[H]
+\small
+\caption{Downside risk in US dollars and in Swiss francs (total return).}
+\begin{tabularx}{\linewidth}{L r r}
+\toprule
+ & \textbf{In USD} & \textbf{In CHF} \\
+\midrule
+One-day 5\% VaR, GARCH(1,1)-t: breaches / expected (Kupiec $p$) & \VAR{risk_var5_usd} & \VAR{risk_var5_chf} \\
+One-day 1\% VaR, GARCH(1,1)-t: breaches / expected (Kupiec $p$) & \VAR{risk_var1_usd} & \VAR{risk_var1_chf} \\
+Probability of loss over 1 / 5 / 10 years: historical windows & \VAR{risk_pl_emp_usd} & \VAR{risk_pl_emp_chf} \\
+Probability of loss over 1 / 5 / 10 years: block bootstrap & \VAR{risk_pl_boot_usd} & \VAR{risk_pl_boot_chf} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\VAR{risk_chf_text}
+
 % ---------------------------------------------------------------- 6
 \keep{24}
 \section{Data validation}
