@@ -8,12 +8,21 @@ on:
 permissions:
   contents: write
 
+# Un seul passage a la fois : un lancement manuel attend la fin du passage en cours
+# au lieu de pousser en meme temps que lui.
+concurrency:
+  group: donnees-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   telecharger:
-    runs-on: ubuntu-latest
+    # Version fixe plutot que ubuntu-latest : un changement d'image ne peut pas casser
+    # l'installation de LaTeX sans qu'on l'ait decide.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - name: Installer LaTeX
@@ -26,8 +35,12 @@ jobs:
         continue-on-error: true
         timeout-minutes: 3
         run: python telecharger_snb.py
+      - name: Controles des donnees (bloquants, avant toute publication)
+        run: python controles_donnees.py
       - name: Tests numeriques (Kelly, levier)
         run: python tests/test_kelly.py
+      - name: Verifier la syntaxe des scripts (les avertissements comptent comme des erreurs)
+        run: python -W error -m py_compile analysis.py build_site.py kelly.py telecharger.py telecharger_snb.py controles_donnees.py
       - name: Regenerer le rapport VT (sans requete Yahoo)
         run: python analysis.py
       - name: Mettre a jour le site GitHub Pages
@@ -37,5 +50,13 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add data/ report/ docs/
-          git diff --cached --quiet || git commit -m "Mise a jour des donnees et du rapport"
-          git push
+          if git diff --cached --quiet; then echo "Rien de nouveau a enregistrer"; exit 0; fi
+          git commit -m "Mise a jour des donnees et du rapport"
+          # Si la branche a avance pendant le passage (fusion d'une PR), on se recale avant de pousser.
+          for essai in 1 2 3; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep 15
+          done
+          echo "::error::Impossible d'enregistrer les donnees apres 3 essais"
+          exit 1

@@ -704,7 +704,7 @@ Probability of loss over 1 / 5 / 10 years: block bootstrap & \VAR{risk_pl_boot_u
 \BLOCK{if val_available}
 \begin{table}[H]
 \small
-\caption{Total returns from Yahoo adjusted prices vs Vanguard's published returns, to 30 September 2026.}
+\caption{Total returns from Yahoo adjusted prices vs Vanguard's published returns, to \VAR{ref_date_long}.}
 \begin{tabularx}{\linewidth}{L r r r r}
 \toprule
 \textbf{Period} & \textbf{Vanguard, market price} & \textbf{This report} & \textbf{Gap (pp)} & \textbf{Vanguard, NAV} \\
@@ -715,7 +715,7 @@ Probability of loss over 1 / 5 / 10 years: block bootstrap & \VAR{risk_pl_boot_u
 \bottomrule
 \end{tabularx}
 \end{table}
-\note{Periods of one year or more are annualised. Source: Vanguard fact sheet F3141 (data as of 30 September 2026), stored in \texttt{data/reference/}.}
+\note{Periods of one year or more are annualised. Source: Vanguard fact sheet F3141 (data as of \VAR{ref_date_long}), stored in \texttt{data/reference/}.}
 \BLOCK{endif}
 
 \VAR{val_text}

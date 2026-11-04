@@ -825,8 +825,13 @@ w_fx = chf.resample("W-FRI").last().pct_change()
 corr_fx_w = w_vt.corr(w_fx)
 
 # Validation against Vanguard's published market-price returns
-ref = pd.read_csv("data/reference/vanguard_vt_trailing_2026-09-30.csv")
-REF_DATE = pd.Timestamp("2026-09-30")
+# The most recent reference file is used: updating the validation each quarter only requires adding
+# data/reference/vanguard_vt_trailing_YYYY-MM-DD.csv (Vanguard fact sheet, same columns).
+import glob
+REF_FILE = sorted(glob.glob("data/reference/vanguard_vt_trailing_*.csv"))[-1]
+REF_DATE = pd.Timestamp(os.path.basename(REF_FILE)[len("vanguard_vt_trailing_"):-len(".csv")])
+assert REF_DATE == REF_DATE + pd.offsets.QuarterEnd(0), f"reference date {REF_DATE.date()} is not a quarter end"
+ref = pd.read_csv(REF_FILE)
 INCEPTION = pd.Timestamp("2008-06-24")
 
 
@@ -837,11 +842,13 @@ def tr_at(d):
 val_rows = []
 if idx[-1] >= REF_DATE:
     end_v = tr_at(REF_DATE)
-    calc = {"quarter": end_v / tr_at("2026-06-30") - 1, "ytd": end_v / tr_at("2025-12-31") - 1}
+    calc = {"quarter": end_v / tr_at(REF_DATE - pd.offsets.QuarterEnd(1)) - 1,
+            "ytd": end_v / tr_at(REF_DATE - pd.offsets.YearEnd(1)) - 1}
     for y in (1, 3, 5, 10):
         calc[f"{y}y"] = (end_v / tr_at(REF_DATE - pd.DateOffset(years=y))) ** (1 / y) - 1
     calc["since_inception"] = (end_v / tr.iloc[0]) ** (365.25 / (REF_DATE - idx[0]).days) - 1
-    labels = {"quarter": "Third quarter 2026", "ytd": "Year to date", "1y": "1 year", "3y": "3 years",
+    _qname = ["First", "Second", "Third", "Fourth"][REF_DATE.quarter - 1]
+    labels = {"quarter": f"{_qname} quarter {REF_DATE.year}", "ytd": "Year to date", "1y": "1 year", "3y": "3 years",
               "5y": "5 years", "10y": "10 years", "since_inception": "Since inception"}
     for _, rw in ref.iterrows():
         val_rows.append((labels[rw["period"]], rw["market_price_return"] / 100, calc[rw["period"]],
@@ -1063,7 +1070,7 @@ export = {
     },
     "probability_of_loss_chf": [{"horizon": name, "windows": int(ploss_hist_chf[name][0]), "empirical": _r(ploss_hist_chf[name][1]),
                                  "bootstrap": _r(ploss_boot_chf[name])} for name in ("1 year", "5 years", "10 years")],
-    "validation": {"reference_date": "2026-09-30", "max_gap": _r(val_max_gap),
+    "validation": {"reference_date": REF_DATE.strftime("%Y-%m-%d"), "max_gap": _r(val_max_gap),
                    "rows": [{"period": lab, "vanguard_market": _r(a_), "computed": _r(b_), "vanguard_nav": _r(nav_)}
                             for lab, a_, b_, nav_, ann_ in val_rows]},
     "reproducibility": {"data_sha256_16": data_sha, "versions": versions, "seed": RNG_SEED},
@@ -1417,6 +1424,7 @@ def ci(m):
 
 AUTHOR = "Cédric Masset"
 v = {"author": AUTHOR, "generated": date.today().strftime("%d %B %Y"),
+     "ref_date_long": f"{REF_DATE.day} {REF_DATE.strftime('%B %Y')}",
      "first_date": dt(idx[0]), "last_date": dt(idx[-1]), "n_days": f"{len(vt):,}"}
 
 # ---------------------------------------------------------------- Summary
@@ -1715,7 +1723,7 @@ v.update({
 _pl_gap = max(abs(ploss_boot_chf[k] - boot_ploss[k]) for k in boot_ploss)
 v["risk_chf_text"] = (
     "The VaR backtest and the probability of loss are repeated on the total return in CHF, with the same methods. "
-    f"At the 1\% level, the GARCH(1,1)-t forecast has {_g1['CHF'][3]} breaches in CHF against {_g1['USD'][3]} in USD "
+    f"At the 1\\% level, the GARCH(1,1)-t forecast has {_g1['CHF'][3]} breaches in CHF against {_g1['USD'][3]} in USD "
     f"(about {num(0.01 * n_bt, 0)} expected); the Kupiec test "
     + ("rejects correct coverage in CHF" if _g1["CHF"][4] < 0.05 else "does not reject correct coverage in CHF")
     + (" but not in USD. " if _g1["USD"][4] >= 0.05 and _g1["CHF"][4] < 0.05 else ". ")
