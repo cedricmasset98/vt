@@ -26,9 +26,21 @@ jobs:
         with:
           python-version: "3.13"
       - name: Installer LaTeX
+        # Un miroir apt peut rester bloque sans rien afficher : chaque essai est limite dans le temps
+        # et relance jusqu'a trois fois, au lieu d'attendre la fin du delai global du job.
+        timeout-minutes: 20
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends latexmk texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended > /dev/null
+          for essai in 1 2 3; do
+            if timeout 240 sudo apt-get update -qq \
+               && timeout 300 sudo apt-get install -y -qq -o DPkg::Lock::Timeout=60 --no-install-recommends \
+                    latexmk texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended > /dev/null; then
+              exit 0
+            fi
+            echo "::warning::Installation de LaTeX interrompue (essai $essai), nouvel essai"
+            sudo dpkg --configure -a || true
+            sleep 20
+          done
+          exit 1
       - run: pip install -r requirements.txt
       - run: python telecharger.py
       - name: Taux sans risque CHF (SARON, BNS) - un echec ne bloque pas la mise a jour
