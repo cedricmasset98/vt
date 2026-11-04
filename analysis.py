@@ -725,6 +725,74 @@ for mb in (1, 6, 12, 24, 36):
                       for h, name in [(12, "1 year"), (60, "5 years"), (120, "10 years")]}
 mc_se = {name: np.sqrt(p_ * (1 - p_) / 20000) for name, p_ in boot_ploss.items()}
 
+# --------------------------------------------------------------------------
+# Downside risk in Swiss francs: same methods as above, applied to VT's total return in CHF
+# (tr_chf = total-return index x USD/CHF). The USD computations above are left untouched;
+# both helper functions are checked against them so that the two views are comparable.
+# Caveat: Yahoo's USD/CHF close is not taken at the same time of day as VT's close, which adds
+# some noise to daily CHF returns (monthly returns are not affected in any meaningful way).
+# --------------------------------------------------------------------------
+def var_backtest_series(lr_s):
+    """One-day VaR backtest of a daily log-return series, with the same methods, window, start
+    and yearly GARCH re-estimation as the USD backtest above (main GARCH model: zero mean)."""
+    x = lr_s.values * 100
+    lr_ = lr_s.values
+    n = len(lr_)
+    idx_bt_ = lr_s.index[lr_s.index >= lr_s.index[2 * WIN]]
+    pos = np.arange(n - len(idx_bt_), n)
+    s2 = np.empty(len(pos))
+    nu = np.empty(len(pos))
+    yrs, prev_ = idx_bt_.year, None
+    for yr in np.unique(yrs):
+        mask = yrs == yr
+        par0, _ = garch_fit_zero(x[:pos[mask][0]], start=prev_)
+        prev_ = par0[1:]
+        _, s2z = garch_var(par0, x)
+        s2[mask] = s2z[pos[mask]]
+        nu[mask] = par0[4]
+    real = lr_[pos]
+    meth, rows = {}, []
+    for lvl in (0.05, 0.01):
+        hist_ = np.array([np.quantile(lr_[p - WIN:p], lvl) for p in pos])
+        norm_ = np.array([lr_[p - WIN:p].mean() + lr_[p - WIN:p].std(ddof=1) * stats.norm.ppf(lvl) for p in pos])
+        qz = stats.t.ppf(lvl, nu) * np.sqrt((nu - 2) / nu)
+        meth[lvl] = {"Historical (250 days)": hist_, "Normal (250 days)": norm_, "GARCH(1,1)-t": np.sqrt(s2) * qz / 100}
+        for name, q in meth[lvl].items():
+            hits = real < q
+            lr_uc, p_uc = kupiec(hits, lvl)
+            lr_ind, p_ind = christoffersen(hits)
+            rows.append((lvl, name, hits.mean(), int(hits.sum()), p_uc, p_ind, stats.chi2.sf(lr_uc + lr_ind, 2)))
+    return idx_bt_, real, meth, rows
+
+
+def ploss_series(tr_index):
+    """Probability of loss over 1, 5 and 10 years: overlapping historical windows of month-end
+    values and stationary bootstrap of monthly log returns (mean block 12 months, fixed seed)."""
+    m_ = tr_index.resample("ME").last()
+    hist_ = {}
+    for h, name in [(12, "1 year"), (60, "5 years"), (120, "10 years")]:
+        g = ((m_ / m_.shift(h)) ** (12 / h) - 1).dropna()
+        hist_[name] = (len(g), (g < 0).mean())
+    lm_ = np.log(m_).diff().dropna().values
+    rng_ = np.random.default_rng(RNG_SEED)
+    boot_ = {name: (stationary_bootstrap_sums(lm_, h, 20000, 12, rng_) < 0).mean()
+             for h, name in [(12, "1 year"), (60, "5 years"), (120, "10 years")]}
+    return hist_, boot_
+
+
+# consistency checks: the helpers reproduce the USD results exactly
+_chk_idx, _chk_real, _, _chk_rows = var_backtest_series(lr_tr)
+assert _chk_idx.equals(bt_idx) and np.allclose(_chk_real, realised)
+assert all(a[0] == b[0] and a[1] == b[1] and a[3] == b[3] and np.allclose(a[4:], b[4:]) for a, b in zip(_chk_rows, bt_rows)), \
+    "CHF VaR helper differs from USD"
+_chk_hist, _chk_boot = ploss_series(tr)
+assert all(np.isclose(_chk_hist[r_[0]][1], r_[2]) and _chk_hist[r_[0]][0] == r_[1] for r_ in roll_rows)
+assert all(np.isclose(_chk_boot[k_], v_) for k_, v_ in boot_ploss.items()), "CHF P(loss) helper differs from USD"
+
+lr_chf = np.log(tr_chf).diff().dropna()
+bt_idx_chf, realised_chf, var_methods_chf, bt_rows_chf = var_backtest_series(lr_chf)
+ploss_hist_chf, ploss_boot_chf = ploss_series(tr_chf)
+
 # Parametric view: i.i.d. normal monthly log returns; uncertainty about the mean only
 mu_m, sd_m = lm.mean(), lm.std(ddof=1)
 se_mu = sd_m / np.sqrt(len(lm))
@@ -985,6 +1053,16 @@ export = {
     },
     "probability_of_loss": [{"horizon": name, "windows": int(n_), "empirical": _r(pl), "bootstrap": _r(boot_ploss[name])}
                             for name, n_, pl, mn, dmn, med, mx in roll_rows],
+    "var_backtest_chf": {
+        "dates": [d.strftime("%Y-%m-%d") for d in bt_idx_chf],
+        "ret": [_r(val, 5) for val in realised_chf],
+        "var1": [_r(val, 5) for val in var_methods_chf[0.01]["GARCH(1,1)-t"]],
+        "table": [{"level": l_, "method": n_, "breach_rate": _r(rate), "breaches": k_, "expected": _r(l_ * len(bt_idx_chf), 1),
+                   "p_kupiec": _r(puc), "p_christoffersen": _r(pind), "p_cc": _r(pcc)}
+                  for l_, n_, rate, k_, puc, pind, pcc in bt_rows_chf],
+    },
+    "probability_of_loss_chf": [{"horizon": name, "windows": int(ploss_hist_chf[name][0]), "empirical": _r(ploss_hist_chf[name][1]),
+                                 "bootstrap": _r(ploss_boot_chf[name])} for name in ("1 year", "5 years", "10 years")],
     "validation": {"reference_date": "2026-09-30", "max_gap": _r(val_max_gap),
                    "rows": [{"period": lab, "vanguard_market": _r(a_), "computed": _r(b_), "vanguard_nav": _r(nav_)}
                             for lab, a_, b_, nav_, ann_ in val_rows]},
@@ -1618,6 +1696,38 @@ v["chf_text"] = (
        f"Sharpe ratio is {tn(chf_m['sharpe'])} in CHF against {tn(full['sharpe'])} in USD. The franc risk-free rate "
        f"averaged {tp(saron_mean)} over the period, against {tp(rf_mean)} for the T-bill."
        if chf_m is not None else ""))
+
+# Downside risk in CHF (same methods as Sections 2 and 4)
+def _bt_cell(rows, lvl):
+    r_ = next(x for x in rows if x[0] == lvl and x[1] == "GARCH(1,1)-t")
+    return f"{r_[3]} / {num(lvl * n_bt, 0)} ({tpv(r_[4])})"
+
+
+_g1 = {c_: next(x for x in rows_ if x[0] == 0.01 and x[1] == "GARCH(1,1)-t") for c_, rows_ in (("USD", bt_rows), ("CHF", bt_rows_chf))}
+v.update({
+    "risk_var5_usd": _bt_cell(bt_rows, 0.05), "risk_var5_chf": _bt_cell(bt_rows_chf, 0.05),
+    "risk_var1_usd": _bt_cell(bt_rows, 0.01), "risk_var1_chf": _bt_cell(bt_rows_chf, 0.01),
+    "risk_pl_emp_usd": v["ploss_emp"],
+    "risk_pl_emp_chf": " / ".join(tp(ploss_hist_chf[k][1], 0) for k in ("1 year", "5 years", "10 years")),
+    "risk_pl_boot_usd": v["ploss_boot"],
+    "risk_pl_boot_chf": " / ".join(tp(ploss_boot_chf[k], 0) for k in ("1 year", "5 years", "10 years")),
+})
+_pl_gap = max(abs(ploss_boot_chf[k] - boot_ploss[k]) for k in boot_ploss)
+v["risk_chf_text"] = (
+    "The VaR backtest and the probability of loss are repeated on the total return in CHF, with the same methods. "
+    f"At the 1\% level, the GARCH(1,1)-t forecast has {_g1['CHF'][3]} breaches in CHF against {_g1['USD'][3]} in USD "
+    f"(about {num(0.01 * n_bt, 0)} expected); the Kupiec test "
+    + ("rejects correct coverage in CHF" if _g1["CHF"][4] < 0.05 else "does not reject correct coverage in CHF")
+    + (" but not in USD. " if _g1["USD"][4] >= 0.05 and _g1["CHF"][4] < 0.05 else ". ")
+    + "Part of the difference may come from Yahoo's USD/CHF and VT closes being taken at different times of day, which "
+      "adds noise to daily CHF returns; the model is otherwise estimated exactly as in USD. "
+    + (f"Over one to ten years, the bootstrap probability of loss differs by at most {num(_pl_gap * 100, 1)} "
+       "percentage point between the two currencies"
+       + (": the weaker dollar lowered the CHF return, but CHF returns were also less volatile."
+          if cagr_chf < cagr_usd and vol_chf < full["vol"] else ".")
+       if _pl_gap < 0.03 else
+       f"The bootstrap probability of loss over one year is {tp(ploss_boot_chf['1 year'], 0)} in CHF against "
+       f"{tp(boot_ploss['1 year'], 0)} in USD."))
 
 # ---------------------------------------------------------------- 6. Validation
 v["val_rows"] = [[lab, tp(a, 2), tp(b, 2), lx(f"{(b - a) * 100:+.2f}"), tp(nav, 2)]
