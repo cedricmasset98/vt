@@ -211,6 +211,17 @@ worst_day, best_day = r_tr.idxmin(), r_tr.idxmax()
 beyond4 = (np.abs(r_tr - mu) > 4 * sd).sum()
 expected4 = len(r_tr) * 2 * stats.norm.sf(4)
 
+# Student-t (location-scale) fitted by maximum likelihood to the same daily returns, against the
+# normal with the same mean and standard deviation. The dashboard fits the same model in the browser
+# for the selected period and currency (checked against scipy).
+t_nu, t_loc, t_sc = stats.t.fit(r_tr)
+ll_norm = stats.norm.logpdf(r_tr, mu, r_tr.std(ddof=0)).sum()
+ll_t = stats.t.logpdf(r_tr, t_nu, t_loc, t_sc).sum()
+aic_norm, aic_t = 2 * 2 - 2 * ll_norm, 2 * 3 - 2 * ll_t
+expected4_t = len(r_tr) * (stats.t.cdf((mu - 4 * sd - t_loc) / t_sc, t_nu) + stats.t.sf((mu + 4 * sd - t_loc) / t_sc, t_nu))
+q99_obs, q99_norm, q99_t = r_tr.quantile(0.01), mu + sd * stats.norm.ppf(0.01), stats.t.ppf(0.01, t_nu, t_loc, t_sc)
+t_sd = t_sc * np.sqrt(t_nu / (t_nu - 2)) if t_nu > 2 else np.inf
+
 # VaR / ES
 var_rows = []
 for lvl in (0.95, 0.99):
@@ -1188,6 +1199,7 @@ def c_distribution():
     a1.hist(r_tr, bins=160, density=True, color=BLUE, alpha=0.75, label="Observed")
     xs = np.linspace(-0.12, 0.12, 400)
     a1.plot(xs, stats.norm.pdf(xs, mu, sd), color=ORANGE, lw=1.3, ls="--", label=r"Normal (same $\mu$, $\sigma$)")
+    a1.plot(xs, stats.t.pdf(xs, t_nu, t_loc, t_sc), color=GREEN, lw=1.3, label=rf"Student-$t$ ($\nu$ = {t_nu:.1f})")
     a1.set_xlim(-0.06, 0.06)
     a1.xaxis.set_major_formatter(fmt_pct)
     a1.set_yticks([])
@@ -1482,6 +1494,11 @@ v["sub_text"] = (
 v.update({
     "mu": tp(mu, 3), "sd": tp(sd, 2), "skew": tn(skew), "kurt": tn(kurt),
     "jb": f"{num(jb_stat, 0)} ($p$ {tpv(jb_p)})", "beyond4": str(beyond4), "expected4": num(expected4, 2),
+    "t_musd": f"{tp(t_loc, 3)} / " + (tp(t_sd, 2) if np.isfinite(t_sd) else "$\\infty$"),
+    "t_kurt": tn(3 + 6 / (t_nu - 4)) if t_nu > 4 else "$\\infty$", "t_nu": tn(t_nu),
+    "expected4_t": num(expected4_t, 1),
+    "q99_obs": tp(q99_obs, 2), "q99_norm": tp(q99_norm, 2), "q99_t": tp(q99_t, 2),
+    "aic_norm": f"{aic_norm:,.0f}".replace("-", "$-$"), "aic_t": f"{aic_t:,.0f}".replace("-", "$-$"),
     "worst": f"{tp(r_tr.min())} ({dt(worst_day)})", "best": f"{tp(r_tr.max(), 1, True)} ({dt(best_day)})",
 })
 v["dist_text"] = (
@@ -1490,7 +1507,17 @@ v["dist_text"] = (
     f"{'negative' if skew < 0 else 'positive'} skewness means that large declines are "
     f"{'more' if skew < 0 else 'less'} pronounced than large gains. Part of this excess kurtosis reflects "
     "time-varying volatility: returns are closer to normal once scaled by their conditional volatility, as the "
-    "GARCH estimates below show.")
+    "GARCH estimates below show. "
+    f"A Student-$t$ distribution fitted by maximum likelihood has $\\nu = {num(t_nu, 1)}$ degrees of freedom. It "
+    f"reproduces both the sharp peak and the fat tails: its AIC is lower than the normal's by {aic_norm - aic_t:,.0f}, "
+    f"and it predicts {num(expected4_t, 1)} days beyond four standard deviations, against {beyond4} observed. "
+    + ("With $\\nu < 4$, its theoretical kurtosis is infinite. " if t_nu <= 4 else "")
+    + (f"The GARCH model below finds $\\nu = {num(g_nu, 1)}$ for the shocks scaled by their conditional "
+       "volatility: much of the unconditional fat-tailedness comes from volatility clustering rather than from "
+       "the shocks themselves. " if g_nu > t_nu else "")
+    + ("Being symmetric, the fitted $t$ cannot capture the negative skewness: it still slightly understates the "
+       f"left tail (1\\% quantile {tp(q99_t, 2)} against {tp(q99_obs, 2)} observed)."
+       if skew < 0 and q99_t > q99_obs else ""))
 v["acf_text"] = (
     f"Returns show little autocorrelation beyond the first lag (Ljung--Box with 10 lags: $Q = {num(lb_r[0], 1)}$). "
     f"Squared returns, by contrast, are strongly and persistently autocorrelated ($Q = {num(lb_r2[0], 0)}$, "
@@ -1715,7 +1742,7 @@ v.update({
 _pl_gap = max(abs(ploss_boot_chf[k] - boot_ploss[k]) for k in boot_ploss)
 v["risk_chf_text"] = (
     "The VaR backtest and the probability of loss are repeated on the total return in CHF, with the same methods. "
-    f"At the 1\% level, the GARCH(1,1)-t forecast has {_g1['CHF'][3]} breaches in CHF against {_g1['USD'][3]} in USD "
+    f"At the 1\\% level, the GARCH(1,1)-t forecast has {_g1['CHF'][3]} breaches in CHF against {_g1['USD'][3]} in USD "
     f"(about {num(0.01 * n_bt, 0)} expected); the Kupiec test "
     + ("rejects correct coverage in CHF" if _g1["CHF"][4] < 0.05 else "does not reject correct coverage in CHF")
     + (" but not in USD. " if _g1["USD"][4] >= 0.05 and _g1["CHF"][4] < 0.05 else ". ")
