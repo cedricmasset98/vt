@@ -673,6 +673,10 @@ Annualised total return & \VAR{cagr_usd} & \VAR{cagr_chf} \\
 Annualised volatility (monthly returns) & \VAR{vol} & \VAR{vol_chf} \\
 USD/CHF over the period & -- & \VAR{fx_move} \\
 Correlation of VT with USD/CHF (weekly / daily) & -- & \VAR{corr_w} / \VAR{corr_d} \\
+\BLOCK{if has_chf_sharpe}
+Risk-free rate (average) & T-bill, \VAR{rf_mean_usd} & SARON, \VAR{rf_mean_chf} \\
+Sharpe ratio, 95\% confidence interval & \VAR{sharpe_usd_ci} & \VAR{sharpe_chf_ci} \\
+\BLOCK{endif}
 \bottomrule
 \end{tabularx}
 \end{table}

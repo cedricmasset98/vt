@@ -2,6 +2,7 @@
 ## Contenu
 
 - `data/` : historiques quotidiens Yahoo Finance (VT, USD/CHF, T-bill 13 semaines), mis à jour chaque soir de semaine par GitHub Actions, de façon incrémentale (`telecharger.py`).
+- `data/SARON.csv` : taux sans risque en francs (SARON, moyenne mensuelle depuis 1999), source Banque nationale suisse (data.snb.ch, cube `zimoma`), mis à jour par `telecharger_snb.py`. Une seule requête par mois au plus ; si le portail ne répond pas ou si la réponse échoue aux contrôles, l'ancien fichier est conservé et la mise à jour quotidienne continue. Utilisé pour le ratio de Sharpe en CHF (dashboard et rapport).
 - `docs/` : tableau de bord GitHub Pages (https://cedricmasset.ch/vt/), généré par `build_site.py` à partir de `site/index.template.html`, des CSV et de `report/analysis_results.json` (calculs lourds faits par `analysis.py`). Graphiques : Apache ECharts, hébergé dans `site/vendor/` (licence Apache 2.0).
 - `report/VT_analysis.pdf` : analyse complète de VT, en anglais (rendement et risque, distribution, efficience de marché, horizon de l'investisseur, perspective CHF), régénérée à partir des CSV par `analysis.py` et mise en page en LaTeX (`report/template.tex`, source `report/VT_analysis.tex` utilisable dans Overleaf), sans requête supplémentaire vers Yahoo.
 
