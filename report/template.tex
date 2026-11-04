@@ -192,23 +192,26 @@ Probability of loss over 1 / 5 / 10 years: block bootstrap & \VAR{ploss_boot} \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{distribution.pdf}
-\caption{Daily total returns: histogram against a normal density with the same mean and variance (left), and normal Q--Q plot (right).}
+\caption{Daily total returns: histogram against a normal density with the same mean and variance and a Student-$t$ fitted by maximum likelihood (left), and normal Q--Q plot (right).}
 \end{figure}
 
 \begin{table}[H]
 \small
 \caption{Descriptive statistics of daily returns.}
-\begin{tabularx}{\linewidth}{L r r}
+\begin{tabularx}{\linewidth}{L r r r}
 \toprule
-\textbf{Statistic} & \textbf{Value} & \textbf{Normal benchmark} \\
+\textbf{Statistic} & \textbf{Observed} & \textbf{Normal} & \textbf{Student-$t$} \\
 \midrule
-Mean / standard deviation & \VAR{mu} / \VAR{sd} & -- \\
-Skewness & \VAR{skew} & 0 \\
-Kurtosis & \VAR{kurt} & 3 \\
-Jarque--Bera statistic & \VAR{jb} & -- \\
-Days beyond $\pm 4$ standard deviations & \VAR{beyond4} & \VAR{expected4} expected \\
-Worst day & \VAR{worst} & -- \\
-Best day & \VAR{best} & -- \\
+Mean / standard deviation & \VAR{mu} / \VAR{sd} & same & \VAR{t_musd} \\
+Skewness & \VAR{skew} & 0 & 0 \\
+Kurtosis & \VAR{kurt} & 3 & \VAR{t_kurt} \\
+Degrees of freedom $\nu$ & -- & $\infty$ & \VAR{t_nu} \\
+Days beyond $\pm 4$ standard deviations & \VAR{beyond4} & \VAR{expected4} & \VAR{expected4_t} \\
+1\% quantile of daily returns & \VAR{q99_obs} & \VAR{q99_norm} & \VAR{q99_t} \\
+AIC (lower is a better fit) & -- & \VAR{aic_norm} & \VAR{aic_t} \\
+Jarque--Bera statistic & \VAR{jb} & -- & -- \\
+Worst day & \VAR{worst} & -- & -- \\
+Best day & \VAR{best} & -- & -- \\
 \bottomrule
 \end{tabularx}
 \end{table}
