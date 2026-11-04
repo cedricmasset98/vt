@@ -355,6 +355,7 @@
           <a class="btn" href="data/VT.csv" download>VT daily prices (CSV)</a>
           <a class="btn" href="data/CHFX.csv" download>USD/CHF (CSV)</a>
           <a class="btn" href="data/IRX.csv" download>13-week T-bill (CSV)</a>
+          <a class="btn" href="data/SARON.csv" download>SARON, monthly (CSV)</a>
           <a class="btn" href="https://github.com/cedricmasset98/vt">Source code on GitHub</a>
         </div>
       </div>
@@ -410,7 +411,7 @@ const normPpf = p => {           // Acklam's approximation
 const normPdf = x => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 
 /* ------------------------------------------------------------------ state */
-let D, T, C, A, FX, RF, N, AN;
+let D, T, C, A, FX, RF, RFC, N, AN;
 const state = { i0: 0, i1: 0, ccy: "USD", tab: "perf", scale: "value" };
 const charts = {};
 let theme;
@@ -445,6 +446,10 @@ function getChart(id) {
 const fxm = i => state.ccy === "CHF" ? FX[i] : 1;
 const vA = i => A[i] * fxm(i);
 const vC = i => C[i] * fxm(i);
+// risk-free rate of the selected currency: 13-week US T-bill (USD) or SARON monthly average (CHF).
+// Without SARON data (older dashboard.json), CHF ratios have no risk-free rate deducted.
+const hasRf = () => state.ccy === "USD" || !!RFC;
+const rfName = () => state.ccy === "USD" ? "13-week US T-bill" : "SARON (SNB monthly average)";
 
 function monthEnds(i0, i1) {     // indices of the last trading day of each month in [i0, i1]
   const out = [];
@@ -461,8 +466,9 @@ function monthly(i0, i1) {       // monthly total returns and risk-free returns 
   for (const e of ends) {
     if (e === i0) continue;
     rets.push(vA(e) / vA(prev) - 1);
-    let g = 1; for (let i = prev + 1; i <= e; i++) g *= 1 + RF[i] / 252;
-    rfs.push(state.ccy === "USD" ? g - 1 : 0);
+    const rfd = state.ccy === "USD" ? RF : RFC;
+    let g = 1; if (rfd) for (let i = prev + 1; i <= e; i++) g *= 1 + rfd[i] / 252;
+    rfs.push(g - 1);
     dates.push(T[e]); prev = e;
   }
   return { rets, rfs, dates, ends };
@@ -488,7 +494,7 @@ function renderKPIs() {
     $("k-vol").textContent = fmtPct(sd(m.rets) * Math.sqrt(12)); $("k-vol-s").textContent = `${m.rets.length} monthly returns`;
     const ex = m.rets.map((r, j) => r - m.rfs[j]);
     const s = sharpeStats(ex);
-    $("k-sh-l").textContent = state.ccy === "USD" ? "Sharpe ratio" : "Return / risk (CHF)";
+    $("k-sh-l").textContent = hasRf() ? "Sharpe ratio" : "Return / risk (CHF)";
     $("k-sh").textContent = fmtNum(s.sr); $("k-sh-s").textContent = `95% CI ${fmtNum(s.lo)} to ${fmtNum(s.hi)}`;
     const down = Math.sqrt(mean(ex.map(x => Math.min(x, 0) ** 2))) * Math.sqrt(12);
     $("k-so").textContent = fmtNum(mean(ex) * 12 / down);
@@ -507,7 +513,7 @@ function renderKPIs() {
     $("k-wm").textContent = fmtPct(m.rets[w], 1, true); $("k-wm-s").textContent = fmtMonth(m.dates[w]); cls($("k-wm"), m.rets[w]);
   }
   $("period-note").textContent = `Selected period: ${fmtDate(T[i0])} – ${fmtDate(T[i1])} · ${state.ccy} · total return with dividends reinvested` +
-    (state.ccy === "CHF" ? " · CHF figures have no risk-free rate deducted" : " · risk-free rate: 13-week US T-bill");
+    (hasRf() ? " · risk-free rate: " + rfName() : " · CHF figures have no risk-free rate deducted");
   // header price
   const last = N - 1, p = vC(last), ch = vC(last) / vC(last - 1) - 1;
   $("price").textContent = (state.ccy === "USD" ? "$" : "CHF ") + p.toFixed(2);
@@ -633,8 +639,8 @@ function renderRisk() {
     const ex = []; for (let k = j - 35; k <= j; k++) ex.push(all.rets[k] - all.rfs[k]);
     if (all.dates[j] >= T[i0] && all.dates[j] <= T[i1]) rs.push([all.dates[j], +(mean(ex) / sd(ex) * Math.sqrt(12)).toFixed(3)]);
   }
-  $("rs-title").textContent = state.ccy === "USD" ? "Rolling 3-year Sharpe ratio" : "Rolling 3-year return / risk (CHF)";
-  $("rs-sub").textContent = state.ccy === "USD" ? "Monthly excess returns over the 13-week US T-bill, trailing 36 months." : "Monthly CHF returns, no risk-free rate deducted, trailing 36 months.";
+  $("rs-title").textContent = hasRf() ? "Rolling 3-year Sharpe ratio" : "Rolling 3-year return / risk (CHF)";
+  $("rs-sub").textContent = hasRf() ? `Monthly excess returns over ${state.ccy === "USD" ? "the " : ""}${rfName()}, trailing 36 months.` : "Monthly CHF returns, no risk-free rate deducted, trailing 36 months.";
   getChart("c-rsharpe").setOption(base({ legend: { show: false }, grid: { left: 40, right: 12, top: 16, bottom: 28 },
     xAxis: timeAxis(), yAxis: valAxis(), tooltip: Object.assign(base().tooltip, { valueFormatter: v => fmtNum(v) }),
     series: [{ name: "3-year ratio", type: "line", data: rs, showSymbol: false, lineStyle: { width: 1.6, color: theme.accent3 }, itemStyle: { color: theme.accent3 },
@@ -862,7 +868,7 @@ let wfPromise = null;
 function renderData() {
   const q = D.quality, a = D.analysis, v = a.validation;
   const card = (l, val, s = "") => `<div class="card"><div class="sub" style="margin:0">${l}</div><div class="v">${val}</div>${s ? `<div class="note" style="margin-top:2px">${s}</div>` : ""}</div>`;
-  $("status").innerHTML = card("Latest close in the data", fmtDate(T[N - 1]), `USD/CHF to ${q.fx_last}, T-bill to ${q.rf_last}`) +
+  $("status").innerHTML = card("Latest close in the data", fmtDate(T[N - 1]), `USD/CHF to ${q.fx_last}, T-bill to ${q.rf_last}` + (q.saron_last ? `, SARON to ${q.saron_last}` : "")) +
     `<div class="card" id="wf-card"><div class="sub" style="margin:0">Last automatic update</div><div class="v" id="wf">checking…</div><div class="note" id="wf-s" style="margin-top:2px"></div></div>` +
     card("Validation against Vanguard", v.max_gap == null ? "–" : `max gap ${(v.max_gap * 100).toFixed(2)} pp`, `reference date ${v.reference_date}`) +
     card("Data fingerprint", `<code>${a.reproducibility.data_sha256_16}</code>`, `report generated ${a.generated}`);
@@ -877,6 +883,7 @@ function renderData() {
     ["Longest gap between trading days", ok(q.max_gap_days <= 5, `${q.max_gap_days} days`, `${q.max_gap_days} days (to ${q.max_gap_end})`)],
     ["Daily moves larger than ±10%", `<span class="pill">${q.moves_above_10pct}</span>`],
     ["Adjusted price above closing price", ok(q.adj_above_close === 0, "none", q.adj_above_close)],
+    ...(q.saron_last ? [["SARON (CHF risk-free rate), last month", ok(q.saron_lag_months <= 2, q.saron_last, `${q.saron_last} (not updated)`)]] : []),
   ].map(([l, v]) => `<li><span>${l}</span>${v}</li>`).join("");
   wfPromise = wfPromise || fetch("https://api.github.com/repos/cedricmasset98/vt/actions/workflows/donnees.yml/runs?per_page=1")
     .then(r => r.ok ? r.json() : Promise.reject());
@@ -926,7 +933,7 @@ function showTab(tab) {
 
 fetch("dashboard.json").then(r => r.json()).then(data => {
   D = data; N = D.dates.length; AN = D.analysis;
-  T = D.dates.map(d => Date.parse(d + "T00:00:00Z")); C = D.close; A = D.adj; FX = D.fx; RF = D.rf;
+  T = D.dates.map(d => Date.parse(d + "T00:00:00Z")); C = D.close; A = D.adj; FX = D.fx; RF = D.rf; RFC = D.rf_chf || null;
   readTheme();
   // controls
   const lo = iso(T[0]), hi = iso(T[N - 1]);
