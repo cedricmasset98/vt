@@ -747,8 +747,10 @@ function renderDist() {
   const nb = logScale ? Math.round(2 * lim / 0.0025) : 80, w = 2 * lim / nb, bins = new Array(nb).fill(0);
   for (const x of r) { const k = Math.floor((x + lim) / w); if (k >= 0 && k < nb) bins[k]++; }
   // Log scale: log10(density / floor) on a linear axis, so that bars rise from a common baseline (an ECharts
-  // log axis would draw bars from 1). The floor is half an observation per bin; nothing is drawn below it.
-  const floor = 0.5 / (r.length * w);
+  // log axis would draw bars from 1). The floor is 0.05 expected observation per bin: low enough for the
+  // Student-t to stay visible over the whole range of observed returns, while the normal density plunges
+  // within a few percent. Nothing is drawn below it.
+  const floor = 0.05 / (r.length * w);
   const dens = v => !logScale ? v : (v >= floor ? Math.log10(v / floor) : null);
   const hist = bins.map((c, k) => [-lim + (k + 0.5) * w, c ? dens(c / (r.length * w)) : (logScale ? null : 0)]);
   const pdf = [], tpdf = [];
