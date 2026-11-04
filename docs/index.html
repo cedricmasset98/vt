@@ -245,7 +245,7 @@
       </div>
       <div class="card full">
         <h3>Value at Risk: out-of-sample backtest</h3>
-        <p class="sub">One-day 1% VaR forecast by a GARCH(1,1)-t model re-estimated every year; red points are breaches. USD, log returns.</p>
+        <p class="sub" id="var-sub">One-day 1% VaR forecast by a GARCH(1,1)-t model re-estimated every year; red points are breaches. USD, log returns.</p>
         <div class="chart tall" id="c-var"></div>
         <div class="tablewrap" style="margin-top:10px"><table id="t-bt"></table></div>
         <p class="note">Full backtest period. Kupiec: unconditional coverage; Christoffersen: independence of breaches; CC: both. p-values below 0.05 reject the model.</p>
@@ -328,7 +328,7 @@
         <p class="text" id="b-text"></p>
       </div>
       <div class="card full">
-        <h3>Probability of loss by holding period</h3><p class="sub">Full history, USD, total return.</p>
+        <h3>Probability of loss by holding period</h3><p class="sub" id="ploss-sub">Full history, USD, total return.</p>
         <div class="tablewrap"><table id="t-ploss" class="nowrap"></table></div>
         <p class="note">Historical windows overlap and understate the risk at long horizons; the stationary bootstrap resamples blocks of monthly returns (mean length 12 months).</p>
       </div>
@@ -693,8 +693,12 @@ function renderDist() {
     row("Expected Shortfall 95% / 99%", `${fmtPct(e95, 2)} / ${fmtPct(e99, 2)}`) +
     row("Worst / best day", `${fmtPct(sorted[0], 1)} / ${fmtPct(sorted[sorted.length - 1], 1, true)}`);
 
-  // VaR backtest (USD, full period, filtered to the selection)
-  const bt = D.analysis.var_backtest, ret = [], v1 = [], br = [];
+  // VaR backtest (full period in the selected currency, filtered to the selection)
+  const btChf = state.ccy === "CHF" && D.analysis.var_backtest_chf;
+  const bt = btChf ? D.analysis.var_backtest_chf : D.analysis.var_backtest, ret = [], v1 = [], br = [];
+  $("var-sub").textContent = "One-day 1% VaR forecast by a GARCH(1,1)-t model re-estimated every year; red points are breaches. " +
+    (btChf ? "CHF, log returns (Yahoo's USD/CHF and VT closes are taken at different times of day, which adds some noise to daily CHF returns)."
+           : "USD, log returns" + (state.ccy === "CHF" ? " (CHF backtest not available)." : "."));
   for (let j = 0; j < bt.dates.length; j++) {
     const t = Date.parse(bt.dates[j] + "T00:00:00Z"); if (t < T[i0] || t > T[i1]) continue;
     ret.push([t, bt.ret[j]]); v1.push([t, bt.var1[j]]); if (bt.ret[j] < bt.var1[j]) br.push([t, bt.ret[j]]);
@@ -859,8 +863,10 @@ function renderBest() {
     `avoiding the ${nn} worst would lift it to ${fmtMoney(vals[2][1])}. The best and worst days tend to occur in the same turbulent weeks.`;
 }
 function renderPloss() {
+  const plChf = state.ccy === "CHF" && D.analysis.probability_of_loss_chf;
+  $("ploss-sub").textContent = `Full history, ${plChf ? "CHF" : "USD"}, total return.` + (state.ccy === "CHF" && !plChf ? " CHF figures not available." : "");
   $("t-ploss").innerHTML = `<tr><th>Holding period</th><th>Historical windows</th><th>P(loss), historical</th><th>P(loss), bootstrap</th></tr>` +
-    D.analysis.probability_of_loss.map(x => `<tr><td>${x.horizon}</td><td>${x.windows}</td><td>${fmtPct(x.empirical, 0)}</td><td>${fmtPct(x.bootstrap, 0)}</td></tr>`).join("");
+    (plChf ? D.analysis.probability_of_loss_chf : D.analysis.probability_of_loss).map(x => `<tr><td>${x.horizon}</td><td>${x.windows}</td><td>${fmtPct(x.empirical, 0)}</td><td>${fmtPct(x.bootstrap, 0)}</td></tr>`).join("");
 }
 
 /* ------------------------------------------------------------------ Data */

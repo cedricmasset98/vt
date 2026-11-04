@@ -739,6 +739,22 @@ Sharpe ratio, 95\% confidence interval & 0.50 [0.02, 0.98] & 0.56 [0.07, 1.04] \
 \end{table}
 The dollar depreciated against the franc, costing an unhedged Swiss investor about 1.3\% of return a year. The weekly correlation between VT and USD/CHF is $-$0.24; the daily correlation, $-$0.05, is biased towards zero because Yahoo's daily currency and ETF closes are taken at different times of day. The dollar tends to strengthen against the franc when equities fall, which cushions part of the losses in CHF. Because VT is a global fund, its true exposure is to a basket of currencies: USD/CHF captures only part of the currency effect. All figures are before Swiss income tax and the 15\% US withholding tax on dividends, which a Swiss resident can usually credit against Swiss tax. Measured against the investor's own risk-free rate, SARON for the franc and the T-bill for the dollar, the Sharpe ratio is 0.56 in CHF against 0.50 in USD. The franc risk-free rate averaged $-$0.1\% over the period, against 1.4\% for the T-bill.
 
+\begin{table}[H]
+\small
+\caption{Downside risk in US dollars and in Swiss francs (total return).}
+\begin{tabularx}{\linewidth}{L r r}
+\toprule
+ & \textbf{In USD} & \textbf{In CHF} \\
+\midrule
+One-day 5\% VaR, GARCH(1,1)-t: breaches / expected (Kupiec $p$) & 216 / 206 (0.471) & 199 / 206 (0.622) \\
+One-day 1\% VaR, GARCH(1,1)-t: breaches / expected (Kupiec $p$) & 52 / 41 (0.103) & 56 / 41 (0.028) \\
+Probability of loss over 1 / 5 / 10 years: historical windows & 22\% / 0\% / 0\% & 23\% / 0\% / 0\% \\
+Probability of loss over 1 / 5 / 10 years: block bootstrap & 24\% / 11\% / 4\% & 25\% / 10\% / 4\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+The VaR backtest and the probability of loss are repeated on the total return in CHF, with the same methods. At the 1\% level, the GARCH(1,1)-t forecast has 56 breaches in CHF against 52 in USD (about 41 expected); the Kupiec test rejects correct coverage in CHF but not in USD. Part of the difference may come from Yahoo's USD/CHF and VT closes being taken at different times of day, which adds noise to daily CHF returns; the model is otherwise estimated exactly as in USD. Over one to ten years, the bootstrap probability of loss differs by at most 0.3 percentage point between the two currencies: the weaker dollar lowered the CHF return, but CHF returns were also less volatile.
+
 % ---------------------------------------------------------------- 6
 \keep{24}
 \section{Data validation}
