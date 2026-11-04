@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VT Market Dashboard</title>
-<meta name="description" content="VT closed at $155.16 on 03 Nov 2026. Since inception: 8.7% a year with dividends reinvested, 16.5% annualised volatility, maximum drawdown -50.3%. Interactive dashboard, full analysis report and data, updated every weekday.">
+<meta name="description" content="VT closed at $157.81 on 04 Nov 2026. Since inception: 8.8% a year with dividends reinvested, 16.5% annualised volatility, maximum drawdown -50.3%. Interactive dashboard, full analysis report and data, updated every weekday.">
 <meta property="og:title" content="Vanguard Total World Stock ETF (VT) – Market dashboard">
-<meta property="og:description" content="VT closed at $155.16 on 03 Nov 2026. Since inception: 8.7% a year with dividends reinvested, 16.5% annualised volatility, maximum drawdown -50.3%. Interactive dashboard, full analysis report and data, updated every weekday.">
+<meta property="og:description" content="VT closed at $157.81 on 04 Nov 2026. Since inception: 8.8% a year with dividends reinvested, 16.5% annualised volatility, maximum drawdown -50.3%. Interactive dashboard, full analysis report and data, updated every weekday.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%232a78d6%27/%3E%3Cpath d=%27M3 11l3-3 2 2 5-5%27 stroke=%27white%27 stroke-width=%271.6%27 fill=%27none%27/%3E%3C/svg%3E">
@@ -136,9 +136,9 @@
       <cite>After Sharpe (1991), “The Arithmetic of Active Management”</cite>
     </blockquote>
     <div class="price-row">
-      <span class="price" id="price">$155.16</span>
+      <span class="price" id="price">$157.81</span>
       <span class="chg" id="chg"></span>
-      <span class="asof" id="asof">Close of 03 Nov 2026</span>
+      <span class="asof" id="asof">Close of 04 Nov 2026</span>
     </div>
   </div>
 </header>
@@ -161,14 +161,14 @@
 
 <main class="wrap">
   <noscript>
-    <p class="text">VT closed at $155.16 on 03 Nov 2026. Since inception (26 Jun 2008): 8.7% a year with dividends reinvested, 16.5% annualised volatility (monthly returns), Sharpe ratio 0.50, maximum drawdown -50.3%. Enable JavaScript for the interactive dashboard, or open the <a href="VT_analysis.pdf">full report</a>.</p>
+    <p class="text">VT closed at $157.81 on 04 Nov 2026. Since inception (26 Jun 2008): 8.8% a year with dividends reinvested, 16.5% annualised volatility (monthly returns), Sharpe ratio 0.51, maximum drawdown -50.3%. Enable JavaScript for the interactive dashboard, or open the <a href="VT_analysis.pdf">full report</a>.</p>
   </noscript>
 
   <section class="kpis" aria-label="Key figures for the selected period">
     <div class="kpi"><div class="l">Period return</div><div class="v" id="k-ret">–</div><div class="s" id="k-ret-s">&nbsp;</div></div>
-    <div class="kpi"><div class="l">Annualised return</div><div class="v" id="k-cagr">8.7%</div><div class="s" id="k-cagr-s">&nbsp;</div></div>
+    <div class="kpi"><div class="l">Annualised return</div><div class="v" id="k-cagr">8.8%</div><div class="s" id="k-cagr-s">&nbsp;</div></div>
     <div class="kpi"><div class="l">Volatility (annualised)</div><div class="v" id="k-vol">16.5%</div><div class="s" id="k-vol-s">monthly returns</div></div>
-    <div class="kpi"><div class="l" id="k-sh-l">Sharpe ratio</div><div class="v" id="k-sh">0.50</div><div class="s" id="k-sh-s">&nbsp;</div></div>
+    <div class="kpi"><div class="l" id="k-sh-l">Sharpe ratio</div><div class="v" id="k-sh">0.51</div><div class="s" id="k-sh-s">&nbsp;</div></div>
     <div class="kpi"><div class="l">Sortino ratio</div><div class="v" id="k-so">–</div><div class="s">downside deviation</div></div>
     <div class="kpi"><div class="l">Maximum drawdown</div><div class="v" id="k-mdd">-50.3%</div><div class="s" id="k-mdd-s">&nbsp;</div></div>
     <div class="kpi"><div class="l">Best month</div><div class="v" id="k-bm">–</div><div class="s" id="k-bm-s">&nbsp;</div></div>
@@ -236,7 +236,12 @@
   <section class="panel" id="panel-dist" role="tabpanel">
     <div class="grid">
       <div class="card">
-        <h3>Distribution of daily returns</h3><p class="sub">Histogram against a normal density with the same mean and standard deviation.</p>
+        <div class="card-head">
+          <div><h3>Distribution of daily returns</h3><p class="sub" id="hist-sub">Histogram against a normal density with the same mean and standard deviation, and a Student-t fitted by maximum likelihood.</p></div>
+          <div class="seg" role="group" aria-label="Histogram scale" id="hist-scale">
+            <button data-s="value" aria-pressed="true">Linear</button><button data-s="log">Log</button>
+          </div>
+        </div>
         <div class="chart" id="c-hist"></div>
       </div>
       <div class="card">
@@ -379,6 +384,7 @@ const DAY = 864e5, YEAR = 365.25 * DAY;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmtPct = (x, d = 1, sign = false) => (x == null || !isFinite(x)) ? "–" :
   (sign && x > 0 ? "+" : "") + (x * 100).toFixed(d).replace("-", "−") + "%";
+const fmtInt = x => (x == null || !isFinite(x)) ? "–" : Math.round(x).toLocaleString("en-US").replace("-", "−");
 const fmtNum = (x, d = 2) => (x == null || !isFinite(x)) ? "–" : x.toFixed(d).replace("-", "−");
 const fmtMoney = x => (x == null || !isFinite(x)) ? "–" : Math.round(x).toLocaleString("en-US");
 const fmtDate = t => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -410,9 +416,76 @@ const normPpf = p => {           // Acklam's approximation
 };
 const normPdf = x => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 
+/* ------------------------------------------------------------------ Student-t (location-scale) */
+function lgamma(x) {             // Lanczos approximation (g = 7, 9 terms), relative error ~1e-15
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+             12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.log(Math.PI / Math.abs(Math.sin(Math.PI * x))) - lgamma(1 - x);
+  x -= 1; let a = c[0]; const t = x + 7.5;
+  for (let i = 1; i < 9; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+function betacf(a, b, x) {       // continued fraction of the incomplete beta function (modified Lentz)
+  const tiny = 1e-300, qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap; if (Math.abs(d) < tiny) d = tiny; d = 1 / d; let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < tiny) d = tiny; c = 1 + aa / c; if (Math.abs(c) < tiny) c = tiny; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < tiny) d = tiny; c = 1 + aa / c; if (Math.abs(c) < tiny) c = tiny; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-15) break;
+  }
+  return h;
+}
+function ibeta(a, b, x) {        // regularized incomplete beta I_x(a, b)
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log1p(-x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+const tLogPdf = (z, nu) => lgamma((nu + 1) / 2) - lgamma(nu / 2) - 0.5 * Math.log(nu * Math.PI) - (nu + 1) / 2 * Math.log1p(z * z / nu);
+const tCdf = (z, nu) => { const p = 0.5 * ibeta(nu / 2, 0.5, nu / (nu + z * z)); return z < 0 ? p : 1 - p; };
+function tPpf(p, nu) {           // standard Student-t quantile, by bisection on the CDF
+  if (p === 0.5) return 0;
+  if (p > 0.5) return -tPpf(1 - p, nu);
+  let lo = -1, hi = 0;
+  while (tCdf(lo, nu) > p) { hi = lo; lo *= 2; }
+  for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (tCdf(mid, nu) > p) hi = mid; else lo = mid; }
+  return (lo + hi) / 2;
+}
+// Maximum-likelihood fit of a location-scale Student-t: EM iterations for the location and scale at a
+// given number of degrees of freedom, golden-section search of the profile likelihood over log(nu).
+function tFit(x) {
+  const n = x.length;
+  let mu = mean(x), s2 = sd(x) ** 2;
+  const profile = nu => {
+    for (let it = 0; it < 1000; it++) {
+      let sw = 0, swx = 0;
+      const w = x.map(v => (nu + 1) / (nu + (v - mu) ** 2 / s2));
+      for (let i = 0; i < n; i++) { sw += w[i]; swx += w[i] * x[i]; }
+      const mu1 = swx / sw;
+      let ss = 0; for (let i = 0; i < n; i++) ss += w[i] * (x[i] - mu1) ** 2;
+      const s21 = ss / n, done = Math.abs(mu1 - mu) < 1e-13 && Math.abs(s21 / s2 - 1) < 1e-11;
+      mu = mu1; s2 = s21; if (done) break;
+    }
+    const s = Math.sqrt(s2); let ll = 0;
+    for (const v of x) ll += tLogPdf((v - mu) / s, nu);
+    return ll - n * Math.log(s);
+  };
+  const g = (Math.sqrt(5) - 1) / 2;
+  let a = Math.log(1.2), b = Math.log(200), c = b - g * (b - a), d = a + g * (b - a);
+  let fc = profile(Math.exp(c)), fd = profile(Math.exp(d));
+  for (let k = 0; k < 60 && b - a > 1e-6; k++) {
+    if (fc > fd) { b = d; d = c; fd = fc; c = b - g * (b - a); fc = profile(Math.exp(c)); }
+    else { a = c; c = d; fc = fd; d = a + g * (b - a); fd = profile(Math.exp(d)); }
+  }
+  const nu = Math.exp((a + b) / 2), ll = profile(nu);
+  return { nu, mu, s: Math.sqrt(s2), ll };
+}
+
 /* ------------------------------------------------------------------ state */
 let D, T, C, A, FX, RF, RFC, N, AN;
-const state = { i0: 0, i1: 0, ccy: "USD", tab: "perf", scale: "value" };
+const state = { i0: 0, i1: 0, ccy: "USD", tab: "perf", scale: "value", histScale: "value" };
 const charts = {};
 let theme;
 
@@ -665,32 +738,62 @@ function renderDist() {
   const { i0, i1 } = state, r = [];
   for (let i = i0 + 1; i <= i1; i++) r.push(vA(i) / vA(i - 1) - 1);
   const m = mean(r), s = sd(r), mo = moments(r), sorted = [...r].sort((a, b) => a - b);
-  const lim = Math.min(0.08, Math.max(0.03, Math.ceil(Math.max(Math.abs(quantile(sorted, 0.001)), Math.abs(quantile(sorted, 0.999))) * 200) / 200));
-  const nb = 80, w = 2 * lim / nb, bins = new Array(nb).fill(0);
+  const tf = tFit(r), tS = z => (z - tf.mu) / tf.s;
+  const logScale = state.histScale === "log";
+  // Linear scale: central part of the distribution. Log scale: full range, so that the tails are visible.
+  const lim = logScale
+    ? Math.ceil(Math.max(Math.abs(sorted[0]), Math.abs(sorted[sorted.length - 1])) * 100) / 100
+    : Math.min(0.08, Math.max(0.03, Math.ceil(Math.max(Math.abs(quantile(sorted, 0.001)), Math.abs(quantile(sorted, 0.999))) * 200) / 200));
+  const nb = logScale ? Math.round(2 * lim / 0.0025) : 80, w = 2 * lim / nb, bins = new Array(nb).fill(0);
   for (const x of r) { const k = Math.floor((x + lim) / w); if (k >= 0 && k < nb) bins[k]++; }
-  const hist = bins.map((c, k) => [-lim + (k + 0.5) * w, c / (r.length * w)]);
-  const pdf = []; for (let k = 0; k <= 200; k++) { const x = -lim + 2 * lim * k / 200; pdf.push([x, normPdf((x - m) / s) / s]); }
+  // Log scale: log10(density / floor) on a linear axis, so that bars rise from a common baseline (an ECharts
+  // log axis would draw bars from 1). The floor is half an observation per bin; nothing is drawn below it.
+  const floor = 0.5 / (r.length * w);
+  const dens = v => !logScale ? v : (v >= floor ? Math.log10(v / floor) : null);
+  const hist = bins.map((c, k) => [-lim + (k + 0.5) * w, c ? dens(c / (r.length * w)) : (logScale ? null : 0)]);
+  const pdf = [], tpdf = [];
+  for (let k = 0; k <= 400; k++) {
+    const x = -lim + 2 * lim * k / 400;
+    pdf.push([x, dens(normPdf((x - m) / s) / s)]);
+    tpdf.push([x, dens(Math.exp(tLogPdf(tS(x), tf.nu)) / tf.s)]);
+  }
+  $("hist-sub").textContent = "Histogram against a normal density with the same mean and standard deviation, and a Student-t fitted by maximum likelihood" +
+    (logScale ? ". Log scale: the tails become visible; the normal density falls as a parabola, the Student-t far more slowly (as a power of the return)." : ` (ν = ${fmtNum(tf.nu, 1)}).`);
   getChart("c-hist").setOption(base({ grid: { left: 16, right: 12, top: 30, bottom: 28 },
     xAxis: { type: "value", min: -lim, max: lim, axisLabel: { color: theme.muted, formatter: pctLabel(0) }, splitLine: { show: false } },
-    yAxis: { type: "value", show: false },
+    yAxis: { type: "value", min: 0, show: false },
     tooltip: { show: false },
     series: [
       { name: "Observed", type: "bar", data: hist, barWidth: "95%", itemStyle: { color: theme.accent, opacity: 0.75 } },
-      { name: "Normal", type: "line", data: pdf, showSymbol: false, smooth: true, lineStyle: { color: theme.accent2, width: 1.6, type: [5, 3] }, itemStyle: { color: theme.accent2 } },
+      { name: "Normal", type: "line", data: pdf, showSymbol: false, smooth: true, connectNulls: false, lineStyle: { color: theme.accent2, width: 1.6, type: [5, 3] }, itemStyle: { color: theme.accent2 } },
+      { name: `Student-t (ν = ${fmtNum(tf.nu, 1)})`, type: "line", data: tpdf, showSymbol: false, smooth: true, connectNulls: false, lineStyle: { color: theme.accent3, width: 1.8 }, itemStyle: { color: theme.accent3 } },
     ] }), true);
   const tail = p => { const q = quantile(sorted, p); const t = sorted.filter(x => x <= q); return [q, mean(t)]; };
   const [v95, e95] = tail(0.05), [v99, e99] = tail(0.01);
   const n95 = m + s * normPpf(0.05), n99 = m + s * normPpf(0.01);
+  const ne = p => m - s * normPdf(normPpf(p)) / p;                       // normal Expected Shortfall
+  const tq = p => tf.mu + tf.s * tPpf(p, tf.nu);                          // Student-t quantile
+  const te = p => { const q = tPpf(p, tf.nu);                             // Student-t Expected Shortfall (nu > 1)
+    return tf.mu - tf.s * (tf.nu + q * q) / (tf.nu - 1) * Math.exp(tLogPdf(q, tf.nu)) / p; };
   const beyond = r.filter(x => Math.abs(x - m) > 4 * s).length, expected = r.length * 2 * 3.167e-5;
-  const row = (l, v, n = "") => `<tr><td>${l}</td><td>${v}</td><td>${n}</td></tr>`;
-  $("t-dist").innerHTML = `<tr><th>Statistic</th><th>Observed</th><th>Normal</th></tr>` +
+  const expectedT = r.length * (tCdf(tS(m - 4 * s), tf.nu) + 1 - tCdf(tS(m + 4 * s), tf.nu));
+  let llN = 0; const sMl = s * Math.sqrt((r.length - 1) / r.length);   // normal log-likelihood at its ML estimates
+  for (const x of r) llN += -0.5 * Math.log(2 * Math.PI) - Math.log(sMl) - 0.5 * ((x - m) / sMl) ** 2;
+  const aicN = 4 - 2 * llN, aicT = 6 - 2 * tf.ll;
+  const tSd = tf.nu > 2 ? fmtPct(tf.s * Math.sqrt(tf.nu / (tf.nu - 2)), 2) : "∞";
+  const tKurt = tf.nu > 4 ? fmtNum(3 + 6 / (tf.nu - 4)) : "∞";
+  const row = (l, v, n = "", t = "") => `<tr><td>${l}</td><td>${v}</td><td>${n}</td><td>${t}</td></tr>`;
+  $("t-dist").innerHTML = `<tr><th>Statistic</th><th>Observed</th><th>Normal</th><th>Student-t</th></tr>` +
     row("Trading days", r.length.toLocaleString("en-US")) +
-    row("Mean / standard deviation", `${fmtPct(m, 3)} / ${fmtPct(s, 2)}`) +
-    row("Skewness", fmtNum(mo.skew), "0") + row("Kurtosis", fmtNum(mo.kurt), "3") +
-    row("Days beyond ±4 standard deviations", beyond, fmtNum(expected, 2)) +
-    row("1-day VaR 95% (historical / normal)", fmtPct(v95, 2), fmtPct(n95, 2)) +
-    row("1-day VaR 99% (historical / normal)", fmtPct(v99, 2), fmtPct(n99, 2)) +
-    row("Expected Shortfall 95% / 99%", `${fmtPct(e95, 2)} / ${fmtPct(e99, 2)}`) +
+    row("Mean / standard deviation", `${fmtPct(m, 3)} / ${fmtPct(s, 2)}`, "same", `${fmtPct(tf.mu, 3)} / ${tSd}`) +
+    row("Skewness", fmtNum(mo.skew), "0", "0") + row("Kurtosis", fmtNum(mo.kurt), "3", tKurt) +
+    row("Degrees of freedom ν", "", "∞", fmtNum(tf.nu, 2)) +
+    row("Days beyond ±4 standard deviations", beyond, fmtNum(expected, 2), fmtNum(expectedT, 1)) +
+    row("1-day VaR 95%", fmtPct(v95, 2), fmtPct(n95, 2), fmtPct(tq(0.05), 2)) +
+    row("1-day VaR 99%", fmtPct(v99, 2), fmtPct(n99, 2), fmtPct(tq(0.01), 2)) +
+    row("Expected Shortfall 95%", fmtPct(e95, 2), fmtPct(ne(0.05), 2), fmtPct(te(0.05), 2)) +
+    row("Expected Shortfall 99%", fmtPct(e99, 2), fmtPct(ne(0.01), 2), fmtPct(te(0.01), 2)) +
+    row("AIC (lower is a better fit)", "", fmtInt(aicN), fmtInt(aicT)) +
     row("Worst / best day", `${fmtPct(sorted[0], 1)} / ${fmtPct(sorted[sorted.length - 1], 1, true)}`);
 
   // VaR backtest (full period in the selected currency, filtered to the selection)
@@ -951,6 +1054,8 @@ fetch("dashboard.json").then(r => r.json()).then(data => {
   $("d0").addEventListener("change", onDates); $("d1").addEventListener("change", onDates);
   document.querySelectorAll("#ccy button").forEach(b => b.addEventListener("click", () => {
     state.ccy = b.dataset.c; document.querySelectorAll("#ccy button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
+  document.querySelectorAll("#hist-scale button").forEach(b => b.addEventListener("click", () => {
+    state.histScale = b.dataset.s; document.querySelectorAll("#hist-scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
   document.querySelectorAll("#scale button").forEach(b => b.addEventListener("click", () => {
     state.scale = b.dataset.s; document.querySelectorAll("#scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
   document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
