@@ -4,6 +4,7 @@ Full analysis of the Vanguard Total World Stock ETF (VT) and LaTeX report.
 Reads only the CSV files in data/ (no request to Yahoo):
   data/VT.csv    VT daily prices (Close, Adj Close)
   data/IRX.csv   13-week T-bill rate, annualised % (risk-free rate)
+  data/SARON.csv SARON, monthly average, annualised % (CHF risk-free rate, SNB; optional)
   data/CHFX.csv  USD/CHF (CHF per 1 USD)
 
 Outputs:
@@ -364,6 +365,19 @@ tr_chf = tr * chf
 cagr_usd, cagr_chf, cagr_fx = cagr(tr), cagr(tr_chf), cagr(chf)
 vol_chf = tr_chf.resample("ME").last().pct_change().std() * np.sqrt(12)   # monthly, as for USD
 corr_fx = r_tr.corr(chf.pct_change().reindex(r_tr.index))
+
+# CHF risk-free rate: SARON monthly average published by the SNB (telecharger_snb.py), applied to
+# every trading day of its month; the current month keeps the last published value. Same method as
+# in USD (daily rate compounded into monthly excess returns). Optional: without the file, the CHF
+# Sharpe ratio is simply not reported.
+chf_m = None
+if os.path.exists("data/SARON.csv"):
+    saron = pd.read_csv("data/SARON.csv", dtype={"Date": str}, index_col="Date")["SARON"] / 100
+    r_chf = tr_chf.pct_change().dropna()
+    rf_chf = pd.Series(r_chf.index.strftime("%Y-%m"), index=r_chf.index).map(saron).ffill() / DAYS_PER_YEAR
+    if not rf_chf.isna().any():
+        chf_m = metrics(r_chf, rf_chf)
+        saron_mean = saron.reindex(pd.Series(r_chf.index.strftime("%Y-%m")).unique()).ffill().mean()
 
 # --------------------------------------------------------------------------
 # Additional rigour: sampling frequency, GARCH, VaR backtest, robustness
@@ -1586,6 +1600,10 @@ v["plan_text"] = (
 v.update({"cagr_usd": tp(cagr_usd), "vol_chf": tp(vol_chf),
           "fx_move": f"{num(chf.iloc[0], 4)} $\\rightarrow$ {num(chf.iloc[-1], 4)} ({tp(cagr_fx, 1, True)} a year)",
           "corr_w": tn(corr_fx_w, 2), "corr_d": tn(corr_fx, 2)})
+v["has_chf_sharpe"] = chf_m is not None
+if chf_m is not None:
+    v.update({"sharpe_usd_ci": f"{tn(full['sharpe'])} {ci(full)}", "sharpe_chf_ci": f"{tn(chf_m['sharpe'])} {ci(chf_m)}",
+              "rf_mean_usd": tp(rf_mean), "rf_mean_chf": tp(saron_mean)})
 v["chf_text"] = (
     f"The dollar depreciated against the franc, costing an unhedged Swiss investor about {tp(cagr_usd - cagr_chf)} "
     f"of return a year. The weekly correlation between VT and USD/CHF is {tn(corr_fx_w, 2)}; the daily correlation, "
@@ -1595,7 +1613,11 @@ v["chf_text"] = (
        "CHF. " if corr_fx_w < 0 else "The franc tends to strengthen when equities fall, which deepens losses in CHF. ")
     + "Because VT is a global fund, its true exposure is to a basket of currencies: USD/CHF captures only part of the "
       "currency effect. All figures are before Swiss income tax and the 15\\% US withholding tax on dividends, which "
-      "a Swiss resident can usually credit against Swiss tax.")
+      "a Swiss resident can usually credit against Swiss tax."
+    + (f" Measured against the investor's own risk-free rate, SARON for the franc and the T-bill for the dollar, the "
+       f"Sharpe ratio is {tn(chf_m['sharpe'])} in CHF against {tn(full['sharpe'])} in USD. The franc risk-free rate "
+       f"averaged {tp(saron_mean)} over the period, against {tp(rf_mean)} for the T-bill."
+       if chf_m is not None else ""))
 
 # ---------------------------------------------------------------- 6. Validation
 v["val_rows"] = [[lab, tp(a, 2), tp(b, 2), lx(f"{(b - a) * 100:+.2f}"), tp(nav, 2)]
@@ -1613,7 +1635,8 @@ v["val_text"] = (
 v["method_text"] = (
     "Source: Yahoo Finance, downloaded with the \\texttt{yfinance} library and updated automatically (GitHub "
     "repository \\url{https://github.com/cedricmasset98/vt}). VT: daily closing prices and prices "
-    "adjusted for dividends and splits (``Adj Close''). Risk-free rate: 13-week US T-bill (\\texttt{\\^{}IRX}). "
+    "adjusted for dividends and splits (``Adj Close''). Risk-free rate: 13-week US T-bill (\\texttt{\\^{}IRX}); "
+    "in CHF, SARON monthly average from the Swiss National Bank data portal (cube \\texttt{zimoma}). "
     "Currency: USD/CHF (\\texttt{CHF=X}). Annualised returns use calendar time; annualised volatility, Sharpe and "
     "Sortino ratios use monthly returns; Sharpe confidence intervals follow \\citet{mertens2002} and "
     f"\\citet{{opdyke2007}}, allowing for skewness and kurtosis. Bootstrap results use the fixed seed {RNG_SEED}. "

@@ -1,7 +1,8 @@
 """
 Builds the GitHub Pages dashboard in docs/ from files already in the repository.
 
-- docs/dashboard.json : daily series (prices, total return, USD/CHF, risk-free rate)
+- docs/dashboard.json : daily series (prices, total return, USD/CHF, risk-free rates:
+                        13-week T-bill for USD, SARON monthly average for CHF)
                         + heavy results computed by analysis.py (GARCH, VaR backtest,
                         rolling efficiency tests, bootstrap, validation)
                         + data-quality checks
@@ -41,6 +42,17 @@ fx = load("CHFX")["Close"].reindex(idx, method="ffill").bfill()
 rf = (load("IRX")["Close"].reindex(idx, method="ffill").bfill() / 100)
 res = json.load(open("report/analysis_results.json"))
 
+# CHF risk-free rate: SARON monthly average (SNB, data/SARON.csv from telecharger_snb.py),
+# applied to every trading day of its month. Months not yet published (the current one)
+# keep the last published value. Without the file, the dashboard falls back to CHF
+# figures with no risk-free rate deducted, as before.
+saron = None
+if os.path.exists("data/SARON.csv"):
+    saron = pd.read_csv("data/SARON.csv", dtype={"Date": str}, index_col="Date")["SARON"] / 100
+    rf_chf = pd.Series(idx.strftime("%Y-%m"), index=idx).map(saron).ffill()
+    if rf_chf.isna().any():          # SARON starting after VT: never expected, the importer checks it
+        saron = None
+
 # ---------------------------------------------------------------- data quality checks
 r = vt["Adj Close"].pct_change().dropna()
 gaps = pd.Series(idx[1:] - idx[:-1], index=idx[1:]).dt.days
@@ -56,6 +68,11 @@ quality = {
     "fx_last": load("CHFX").index[-1].strftime("%Y-%m-%d"),
     "rf_last": load("IRX").index[-1].strftime("%Y-%m-%d"),
 }
+if saron is not None:
+    quality["saron_last"] = saron.index[-1]
+    # months between the last VT close and the last published SARON month (1 is normal:
+    # the SNB publishes a month's average in the first working days of the next month)
+    quality["saron_lag_months"] = (pd.Period(idx[-1], "M") - pd.Period(saron.index[-1], "M")).n
 
 # ---------------------------------------------------------------- dashboard.json
 dash = {
@@ -64,6 +81,7 @@ dash = {
     "adj": [round(float(x), 4) for x in vt["Adj Close"]],
     "fx": [round(float(x), 5) for x in fx],
     "rf": [round(float(x), 5) for x in rf],
+    **({"rf_chf": [round(float(x), 6) for x in rf_chf]} if saron is not None else {}),
     "analysis": res,
     "quality": quality,
 }
