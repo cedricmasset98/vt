@@ -94,6 +94,7 @@
   th { font-weight: 600; color: var(--ink-2); font-size: 12.5px; }
   tr:last-child td { border-bottom: 0; }
   .tablewrap { overflow-x: auto; }
+  @media (max-width: 600px) { #t-dist { font-size: 12.5px; } #t-dist th, #t-dist td { padding: 6px 4px; } #t-dist th { font-size: 12px; } }
   table.nowrap td, table.nowrap th { white-space: nowrap; }
   .pos { color: var(--good); } .neg { color: var(--bad); }
   .pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
@@ -772,16 +773,18 @@ function renderDist() {
   const row = (l, v, n = "", t = "") => `<tr><td>${l}</td><td>${v}</td><td>${n}</td><td>${t}</td></tr>`;
   $("t-dist").innerHTML = `<tr><th>Statistic</th><th>Observed</th><th>Normal</th><th>Student-t</th></tr>` +
     row("Trading days", r.length.toLocaleString("en-US")) +
-    row("Mean / standard deviation", `${fmtPct(m, 3)} / ${fmtPct(s, 2)}`, "same", `${fmtPct(tf.mu, 3)} / ${tSd}`) +
+    row("Mean", fmtPct(m, 3), fmtPct(m, 3), fmtPct(tf.mu, 3)) +
+    row("Standard deviation", fmtPct(s, 2), fmtPct(s, 2), tSd) +
     row("Skewness", fmtNum(mo.skew), "0", "0") + row("Kurtosis", fmtNum(mo.kurt), "3", tKurt) +
     row("Degrees of freedom ν", "", "∞", fmtNum(tf.nu, 2)) +
-    row("Days beyond ±4 standard deviations", beyond, fmtNum(expected, 2), fmtNum(expectedT, 1)) +
+    row("Days beyond ±4σ", beyond, fmtNum(expected, 2), fmtNum(expectedT, 1)) +
     row("1-day VaR 95%", fmtPct(v95, 2), fmtPct(n95, 2), fmtPct(tq(0.05), 2)) +
     row("1-day VaR 99%", fmtPct(v99, 2), fmtPct(n99, 2), fmtPct(tq(0.01), 2)) +
     row("Expected Shortfall 95%", fmtPct(e95, 2), fmtPct(ne(0.05), 2), fmtPct(te(0.05), 2)) +
     row("Expected Shortfall 99%", fmtPct(e99, 2), fmtPct(ne(0.01), 2), fmtPct(te(0.01), 2)) +
-    row("AIC (lower is a better fit)", "", fmtInt(aicN), fmtInt(aicT)) +
-    row("Worst / best day", `${fmtPct(sorted[0], 1)} / ${fmtPct(sorted[sorted.length - 1], 1, true)}`);
+    row("AIC (lower = better fit)", "", fmtInt(aicN), fmtInt(aicT)) +
+    row("Worst day", fmtPct(sorted[0], 1)) +
+    row("Best day", fmtPct(sorted[sorted.length - 1], 1, true));
 
   // VaR backtest (full period in the selected currency, filtered to the selection)
   const btChf = state.ccy === "CHF" && D.analysis.var_backtest_chf;
