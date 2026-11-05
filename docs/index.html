@@ -236,12 +236,7 @@
   <section class="panel" id="panel-dist" role="tabpanel">
     <div class="grid">
       <div class="card">
-        <div class="card-head">
-          <div><h3>Distribution of daily returns</h3><p class="sub" id="hist-sub">Histogram against a normal density with the same mean and standard deviation, and a Student-t fitted by maximum likelihood.</p></div>
-          <div class="seg" role="group" aria-label="Histogram scale" id="hist-scale">
-            <button data-s="value" aria-pressed="true">Linear</button><button data-s="log">Log</button>
-          </div>
-        </div>
+        <h3>Distribution of daily returns</h3><p class="sub" id="hist-sub">Histogram against a normal density with the same mean and standard deviation, and a Student-t fitted by maximum likelihood.</p>
         <div class="chart" id="c-hist"></div>
       </div>
       <div class="card">
@@ -485,7 +480,7 @@ function tFit(x) {
 
 /* ------------------------------------------------------------------ state */
 let D, T, C, A, FX, RF, RFC, N, AN;
-const state = { i0: 0, i1: 0, ccy: "USD", tab: "perf", scale: "value", histScale: "value" };
+const state = { i0: 0, i1: 0, ccy: "USD", tab: "perf", scale: "value" };
 const charts = {};
 let theme;
 
@@ -739,36 +734,26 @@ function renderDist() {
   for (let i = i0 + 1; i <= i1; i++) r.push(vA(i) / vA(i - 1) - 1);
   const m = mean(r), s = sd(r), mo = moments(r), sorted = [...r].sort((a, b) => a - b);
   const tf = tFit(r), tS = z => (z - tf.mu) / tf.s;
-  const logScale = state.histScale === "log";
-  // Linear scale: central part of the distribution. Log scale: full range, so that the tails are visible.
-  const lim = logScale
-    ? Math.ceil(Math.max(Math.abs(sorted[0]), Math.abs(sorted[sorted.length - 1])) * 100) / 100
-    : Math.min(0.08, Math.max(0.03, Math.ceil(Math.max(Math.abs(quantile(sorted, 0.001)), Math.abs(quantile(sorted, 0.999))) * 200) / 200));
-  const nb = logScale ? Math.round(2 * lim / 0.0025) : 80, w = 2 * lim / nb, bins = new Array(nb).fill(0);
+  const lim = Math.min(0.08, Math.max(0.03, Math.ceil(Math.max(Math.abs(quantile(sorted, 0.001)), Math.abs(quantile(sorted, 0.999))) * 200) / 200));
+  const nb = 80, w = 2 * lim / nb, bins = new Array(nb).fill(0);
   for (const x of r) { const k = Math.floor((x + lim) / w); if (k >= 0 && k < nb) bins[k]++; }
-  // Log scale: log10(density / floor) on a linear axis, so that bars rise from a common baseline (an ECharts
-  // log axis would draw bars from 1). The floor is 0.05 expected observation per bin: low enough for the
-  // Student-t to stay visible over the whole range of observed returns, while the normal density plunges
-  // within a few percent. Nothing is drawn below it.
-  const floor = 0.05 / (r.length * w);
-  const dens = v => !logScale ? v : (v >= floor ? Math.log10(v / floor) : null);
-  const hist = bins.map((c, k) => [-lim + (k + 0.5) * w, c ? dens(c / (r.length * w)) : (logScale ? null : 0)]);
+  const hist = bins.map((c, k) => [-lim + (k + 0.5) * w, c / (r.length * w)]);
   const pdf = [], tpdf = [];
   for (let k = 0; k <= 400; k++) {
     const x = -lim + 2 * lim * k / 400;
-    pdf.push([x, dens(normPdf((x - m) / s) / s)]);
-    tpdf.push([x, dens(Math.exp(tLogPdf(tS(x), tf.nu)) / tf.s)]);
+    pdf.push([x, normPdf((x - m) / s) / s]);
+    tpdf.push([x, Math.exp(tLogPdf(tS(x), tf.nu)) / tf.s]);
   }
   $("hist-sub").textContent = "Histogram against a normal density with the same mean and standard deviation, and a Student-t fitted by maximum likelihood" +
-    (logScale ? ". Log scale: the tails become visible; the normal density falls as a parabola, the Student-t far more slowly (as a power of the return)." : ` (ν = ${fmtNum(tf.nu, 1)}).`);
+    ` (ν = ${fmtNum(tf.nu, 1)}).`;
   getChart("c-hist").setOption(base({ grid: { left: 16, right: 12, top: 30, bottom: 28 },
     xAxis: { type: "value", min: -lim, max: lim, axisLabel: { color: theme.muted, formatter: pctLabel(0) }, splitLine: { show: false } },
     yAxis: { type: "value", min: 0, show: false },
     tooltip: { show: false },
     series: [
       { name: "Observed", type: "bar", data: hist, barWidth: "95%", itemStyle: { color: theme.accent, opacity: 0.75 } },
-      { name: "Normal", type: "line", data: pdf, showSymbol: false, smooth: true, connectNulls: false, lineStyle: { color: theme.accent2, width: 1.6, type: [5, 3] }, itemStyle: { color: theme.accent2 } },
-      { name: `Student-t (ν = ${fmtNum(tf.nu, 1)})`, type: "line", data: tpdf, showSymbol: false, smooth: true, connectNulls: false, lineStyle: { color: theme.accent3, width: 1.8 }, itemStyle: { color: theme.accent3 } },
+      { name: "Normal", type: "line", data: pdf, showSymbol: false, smooth: true, lineStyle: { color: theme.accent2, width: 1.6, type: [5, 3] }, itemStyle: { color: theme.accent2 } },
+      { name: `Student-t (ν = ${fmtNum(tf.nu, 1)})`, type: "line", data: tpdf, showSymbol: false, smooth: true, lineStyle: { color: theme.accent3, width: 1.8 }, itemStyle: { color: theme.accent3 } },
     ] }), true);
   const tail = p => { const q = quantile(sorted, p); const t = sorted.filter(x => x <= q); return [q, mean(t)]; };
   const [v95, e95] = tail(0.05), [v99, e99] = tail(0.01);
@@ -1056,8 +1041,6 @@ fetch("dashboard.json").then(r => r.json()).then(data => {
   $("d0").addEventListener("change", onDates); $("d1").addEventListener("change", onDates);
   document.querySelectorAll("#ccy button").forEach(b => b.addEventListener("click", () => {
     state.ccy = b.dataset.c; document.querySelectorAll("#ccy button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
-  document.querySelectorAll("#hist-scale button").forEach(b => b.addEventListener("click", () => {
-    state.histScale = b.dataset.s; document.querySelectorAll("#hist-scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
   document.querySelectorAll("#scale button").forEach(b => b.addEventListener("click", () => {
     state.scale = b.dataset.s; document.querySelectorAll("#scale button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); }));
   document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
