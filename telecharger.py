@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import yfinance as yf
 
-TICKERS = ["VT", "CHF=X", "^IRX"]  # VT, USD/CHF, taux T-bill 13 semaines (%)
+TICKERS = ["VT", "CHF=X", "^IRX", "^SSHI"]  # VT, USD/CHF, T-bill 13 semaines (%), SPI rendement total
 CHEVAUCHEMENT_JOURS = 10  # séances récentes redemandées (corrections, cours ajusté)
 PAUSE_SECONDES = 5
 

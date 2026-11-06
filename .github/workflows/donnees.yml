@@ -26,6 +26,9 @@ jobs:
         continue-on-error: true
         timeout-minutes: 3
         run: python telecharger_snb.py
+      - name: Raccorder le SPI rendement total (historique 1988 + Yahoo) - un echec ne bloque pas la mise a jour
+        continue-on-error: true
+        run: python raccorder_spi.py
       - name: Tests numeriques (Kelly, levier)
         run: python tests/test_kelly.py
       - name: Regenerer le rapport VT (sans requete Yahoo)
